@@ -1,0 +1,308 @@
+{
+  "suite": {
+    "GET /users/{id} - returns user profile by ID": {
+      "endpoint": "GET /users/{id} - returns user profile by ID",
+      "method": "GET",
+      "total_cases": 3,
+      "test_cases": [
+        {
+          "id": "TC-001",
+          "name": "Get User Profile By ID Happy Path",
+          "category": "happy_path",
+          "description": "Verifies that a valid user ID returns the corresponding user profile",
+          "input": {
+            "headers": {
+              "Authorization": "Bearer valid_token"
+            },
+            "params": {
+              "id": "12345"
+            },
+            "body": {}
+          },
+          "expected": {
+            "status_code": 200,
+            "response_contains": [
+              "name",
+              "email"
+            ],
+            "response_schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "priority": "high"
+        },
+        {
+          "id": "TC-002",
+          "name": "Get User Profile By ID Edge Case",
+          "category": "edge_case",
+          "description": "Verifies that a user ID with special characters returns an error",
+          "input": {
+            "headers": {
+              "Authorization": "Bearer valid_token"
+            },
+            "params": {
+              "id": "!@#$"
+            },
+            "body": {}
+          },
+          "expected": {
+            "status_code": 400,
+            "response_contains": [
+              "Invalid user ID"
+            ],
+            "response_schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "priority": "medium"
+        },
+        {
+          "id": "TC-003",
+          "name": "Get User Profile By ID Validation Error",
+          "category": "validation",
+          "description": "Verifies that a missing user ID returns a validation error",
+          "input": {
+            "headers": {
+              "Authorization": "Bearer valid_token"
+            },
+            "params": {},
+            "body": {}
+          },
+          "expected": {
+            "status_code": 400,
+            "response_contains": [
+              "User ID is required"
+            ],
+            "response_schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "priority": "medium"
+        }
+      ],
+      "raw_ai_response": "[\n  {\n    \"id\": \"TC-001\",\n    \"name\": \"Get User Profile By ID Happy Path\",\n    \"category\": \"happy_path\",\n    \"description\": \"Verifies that a valid user ID returns the corresponding user profile\",\n    \"input\": {\n      \"headers\": {\n        \"Authorization\": \"Bearer valid_token\"\n      },\n      \"params\": {\n        \"id\": \"12345\"\n      },\n      \"body\": {}\n    },\n    \"expected\": {\n      \"status_code\": 200,\n      \"response_contains\": [\"name\", \"email\"],\n      \"response_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"id\": {\"type\": \"integer\"},\n          \"name\": {\"type\": \"string\"},\n          \"email\": {\"type\": \"string\"}\n        }\n      }\n    },\n    \"priority\": \"high\"\n  },\n  {\n    \"id\": \"TC-002\",\n    \"name\": \"Get User Profile By ID Edge Case\",\n    \"category\": \"edge_case\",\n    \"description\": \"Verifies that a user ID with special characters returns an error\",\n    \"input\": {\n      \"headers\": {\n        \"Authorization\": \"Bearer valid_token\"\n      },\n      \"params\": {\n        \"id\": \"!@#$\"\n      },\n      \"body\": {}\n    },\n    \"expected\": {\n      \"status_code\": 400,\n      \"response_contains\": [\"Invalid user ID\"],\n      \"response_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"error\": {\"type\": \"string\"},\n          \"message\": {\"type\": \"string\"}\n        }\n      }\n    },\n    \"priority\": \"medium\"\n  },\n  {\n    \"id\": \"TC-003\",\n    \"name\": \"Get User Profile By ID Validation Error\",\n    \"category\": \"validation\",\n    \"description\": \"Verifies that a missing user ID returns a validation error\",\n    \"input\": {\n      \"headers\": {\n        \"Authorization\": \"Bearer valid_token\"\n      },\n      \"params\": {},\n      \"body\": {}\n    },\n    \"expected\": {\n      \"status_code\": 400,\n      \"response_contains\": [\"User ID is required\"],\n      \"response_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"error\": {\"type\": \"string\"},\n          \"message\": {\"type\": \"string\"}\n        }\n      }\n    },\n    \"priority\": \"medium\"\n  }\n]"
+    },
+    "POST /users - create new user with name, email, role": {
+      "endpoint": "POST /users - create new user with name, email, role",
+      "method": "POST",
+      "total_cases": 3,
+      "test_cases": [
+        {
+          "id": "TC-001",
+          "name": "Create user with valid inputs",
+          "category": "happy_path",
+          "description": "Verifies creating a new user with valid name, email, and role",
+          "input": {
+            "headers": {
+              "Authorization": "Bearer valid_token",
+              "Content-Type": "application/json"
+            },
+            "params": {},
+            "body": {
+              "name": "John Doe",
+              "email": "john@example.com",
+              "role": "admin"
+            }
+          },
+          "expected": {
+            "status_code": 201,
+            "response_contains": [
+              "id",
+              "name",
+              "email",
+              "role"
+            ],
+            "response_schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "priority": "high"
+        },
+        {
+          "id": "TC-002",
+          "name": "Create user with missing required fields",
+          "category": "validation",
+          "description": "Verifies creating a new user with missing required fields",
+          "input": {
+            "headers": {
+              "Authorization": "Bearer valid_token",
+              "Content-Type": "application/json"
+            },
+            "params": {},
+            "body": {
+              "name": "John Doe"
+            }
+          },
+          "expected": {
+            "status_code": 400,
+            "response_contains": [
+              "error",
+              "message"
+            ],
+            "response_schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "priority": "medium"
+        },
+        {
+          "id": "TC-003",
+          "name": "Create user with invalid JSON",
+          "category": "error_handling",
+          "description": "Verifies creating a new user with invalid JSON",
+          "input": {
+            "headers": {
+              "Authorization": "Bearer valid_token",
+              "Content-Type": "application/json"
+            },
+            "params": {},
+            "body": "Invalid JSON"
+          },
+          "expected": {
+            "status_code": 400,
+            "response_contains": [
+              "error",
+              "message"
+            ],
+            "response_schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "priority": "low"
+        }
+      ],
+      "raw_ai_response": "[\n  {\n    \"id\": \"TC-001\",\n    \"name\": \"Create user with valid inputs\",\n    \"category\": \"happy_path\",\n    \"description\": \"Verifies creating a new user with valid name, email, and role\",\n    \"input\": {\n      \"headers\": {\n        \"Authorization\": \"Bearer valid_token\",\n        \"Content-Type\": \"application/json\"\n      },\n      \"params\": {},\n      \"body\": {\n        \"name\": \"John Doe\",\n        \"email\": \"john@example.com\",\n        \"role\": \"admin\"\n      }\n    },\n    \"expected\": {\n      \"status_code\": 201,\n      \"response_contains\": [\"id\", \"name\", \"email\", \"role\"],\n      \"response_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"id\": {\"type\": \"integer\"},\n          \"name\": {\"type\": \"string\"},\n          \"email\": {\"type\": \"string\"},\n          \"role\": {\"type\": \"string\"}\n        }\n      }\n    },\n    \"priority\": \"high\"\n  },\n  {\n    \"id\": \"TC-002\",\n    \"name\": \"Create user with missing required fields\",\n    \"category\": \"validation\",\n    \"description\": \"Verifies creating a new user with missing required fields\",\n    \"input\": {\n      \"headers\": {\n        \"Authorization\": \"Bearer valid_token\",\n        \"Content-Type\": \"application/json\"\n      },\n      \"params\": {},\n      \"body\": {\n        \"name\": \"John Doe\"\n      }\n    },\n    \"expected\": {\n      \"status_code\": 400,\n      \"response_contains\": [\"error\", \"message\"],\n      \"response_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"error\": {\"type\": \"string\"},\n          \"message\": {\"type\": \"string\"}\n        }\n      }\n    },\n    \"priority\": \"medium\"\n  },\n  {\n    \"id\": \"TC-003\",\n    \"name\": \"Create user with invalid JSON\",\n    \"category\": \"error_handling\",\n    \"description\": \"Verifies creating a new user with invalid JSON\",\n    \"input\": {\n      \"headers\": {\n        \"Authorization\": \"Bearer valid_token\",\n        \"Content-Type\": \"application/json\"\n      },\n      \"params\": {},\n      \"body\": \"Invalid JSON\"\n    },\n    \"expected\": {\n      \"status_code\": 400,\n      \"response_contains\": [\"error\", \"message\"],\n      \"response_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"error\": {\"type\": \"string\"},\n          \"message\": {\"type\": \"string\"}\n        }\n      }\n    },\n    \"priority\": \"low\"\n  }\n]"
+    },
+    "DELETE /users/{id} - admin-only, deletes a user": {
+      "endpoint": "DELETE /users/{id} - admin-only, deletes a user",
+      "method": "DELETE",
+      "total_cases": 3,
+      "test_cases": [
+        {
+          "id": "TC-001",
+          "name": "Delete user happy path",
+          "category": "happy_path",
+          "description": "Verifies successful deletion of a user with valid id and admin token",
+          "input": {
+            "headers": {
+              "Authorization": "Bearer admin_token"
+            },
+            "params": {
+              "id": "12345"
+            },
+            "body": {}
+          },
+          "expected": {
+            "status_code": 204,
+            "response_contains": [],
+            "response_schema": {}
+          },
+          "priority": "high"
+        },
+        {
+          "id": "TC-002",
+          "name": "Delete user with invalid id",
+          "category": "edge_case",
+          "description": "Verifies error response when deleting a user with an invalid id",
+          "input": {
+            "headers": {
+              "Authorization": "Bearer admin_token"
+            },
+            "params": {
+              "id": "!@#$"
+            },
+            "body": {}
+          },
+          "expected": {
+            "status_code": 400,
+            "response_contains": [
+              "Invalid user id"
+            ],
+            "response_schema": {}
+          },
+          "priority": "medium"
+        },
+        {
+          "id": "TC-003",
+          "name": "Delete user without admin token",
+          "category": "auth",
+          "description": "Verifies error response when deleting a user without an admin token",
+          "input": {
+            "headers": {},
+            "params": {
+              "id": "12345"
+            },
+            "body": {}
+          },
+          "expected": {
+            "status_code": 401,
+            "response_contains": [
+              "Unauthorized"
+            ],
+            "response_schema": {}
+          },
+          "priority": "high"
+        }
+      ],
+      "raw_ai_response": "[\n  {\n    \"id\": \"TC-001\",\n    \"name\": \"Delete user happy path\",\n    \"category\": \"happy_path\",\n    \"description\": \"Verifies successful deletion of a user with valid id and admin token\",\n    \"input\": {\n      \"headers\": {\n        \"Authorization\": \"Bearer admin_token\"\n      },\n      \"params\": {\n        \"id\": \"12345\"\n      },\n      \"body\": {}\n    },\n    \"expected\": {\n      \"status_code\": 204,\n      \"response_contains\": [],\n      \"response_schema\": {}\n    },\n    \"priority\": \"high\"\n  },\n  {\n    \"id\": \"TC-002\",\n    \"name\": \"Delete user with invalid id\",\n    \"category\": \"edge_case\",\n    \"description\": \"Verifies error response when deleting a user with an invalid id\",\n    \"input\": {\n      \"headers\": {\n        \"Authorization\": \"Bearer admin_token\"\n      },\n      \"params\": {\n        \"id\": \"!@#$\"\n      },\n      \"body\": {}\n    },\n    \"expected\": {\n      \"status_code\": 400,\n      \"response_contains\": [\"Invalid user id\"],\n      \"response_schema\": {}\n    },\n    \"priority\": \"medium\"\n  },\n  {\n    \"id\": \"TC-003\",\n    \"name\": \"Delete user without admin token\",\n    \"category\": \"auth\",\n    \"description\": \"Verifies error response when deleting a user without an admin token\",\n    \"input\": {\n      \"headers\": {},\n      \"params\": {\n        \"id\": \"12345\"\n      },\n      \"body\": {}\n    },\n    \"expected\": {\n      \"status_code\": 401,\n      \"response_contains\": [\"Unauthorized\"],\n      \"response_schema\": {}\n    },\n    \"priority\": \"high\"\n  }\n]"
+    }
+  },
+  "total_endpoints": 3
+}

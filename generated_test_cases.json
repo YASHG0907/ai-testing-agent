@@ -1,0 +1,174 @@
+{
+  "endpoint": "POST /api/v1/login - accepts JSON body with 'email' (string) and 'password' (string). Returns a JWT access token on success (200). Returns 401 for wrong credentials, 422 for missing fields.",
+  "method": "POST",
+  "total_cases": 5,
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "name": "Valid Login",
+      "category": "happy_path",
+      "description": "Verifies successful login with valid email and password",
+      "input": {
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "params": {},
+        "body": {
+          "email": "user@example.com",
+          "password": "password123"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "response_contains": [
+          "access_token"
+        ],
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "access_token": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "access_token"
+          ]
+        }
+      },
+      "priority": "high"
+    },
+    {
+      "id": "TC-002",
+      "name": "Empty Email",
+      "category": "edge_case",
+      "description": "Verifies login with empty email",
+      "input": {
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "params": {},
+        "body": {
+          "email": "",
+          "password": "password123"
+        }
+      },
+      "expected": {
+        "status_code": 422,
+        "response_contains": [
+          "error"
+        ],
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "error"
+          ]
+        }
+      },
+      "priority": "medium"
+    },
+    {
+      "id": "TC-003",
+      "name": "Missing Password",
+      "category": "validation",
+      "description": "Verifies login with missing password",
+      "input": {
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "params": {},
+        "body": {
+          "email": "user@example.com"
+        }
+      },
+      "expected": {
+        "status_code": 422,
+        "response_contains": [
+          "error"
+        ],
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "error"
+          ]
+        }
+      },
+      "priority": "high"
+    },
+    {
+      "id": "TC-004",
+      "name": "Invalid Credentials",
+      "category": "auth",
+      "description": "Verifies login with invalid credentials",
+      "input": {
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "params": {},
+        "body": {
+          "email": "user@example.com",
+          "password": "wrongpassword"
+        }
+      },
+      "expected": {
+        "status_code": 401,
+        "response_contains": [
+          "error"
+        ],
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "error"
+          ]
+        }
+      },
+      "priority": "high"
+    },
+    {
+      "id": "TC-005",
+      "name": "Invalid JSON",
+      "category": "error_handling",
+      "description": "Verifies login with invalid JSON",
+      "input": {
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "params": {},
+        "body": "invalid json"
+      },
+      "expected": {
+        "status_code": 422,
+        "response_contains": [
+          "error"
+        ],
+        "response_schema": {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "error"
+          ]
+        }
+      },
+      "priority": "medium"
+    }
+  ],
+  "raw_ai_response": "[\n  {\n    \"id\": \"TC-001\",\n    \"name\": \"Valid Login\",\n    \"category\": \"happy_path\",\n    \"description\": \"Verifies successful login with valid email and password\",\n    \"input\": {\n      \"headers\": {\n        \"Content-Type\": \"application/json\"\n      },\n      \"params\": {},\n      \"body\": {\n        \"email\": \"user@example.com\",\n        \"password\": \"password123\"\n      }\n    },\n    \"expected\": {\n      \"status_code\": 200,\n      \"response_contains\": [\"access_token\"],\n      \"response_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"access_token\": {\"type\": \"string\"}\n        },\n        \"required\": [\"access_token\"]\n      }\n    },\n    \"priority\": \"high\"\n  },\n  {\n    \"id\": \"TC-002\",\n    \"name\": \"Empty Email\",\n    \"category\": \"edge_case\",\n    \"description\": \"Verifies login with empty email\",\n    \"input\": {\n      \"headers\": {\n        \"Content-Type\": \"application/json\"\n      },\n      \"params\": {},\n      \"body\": {\n        \"email\": \"\",\n        \"password\": \"password123\"\n      }\n    },\n    \"expected\": {\n      \"status_code\": 422,\n      \"response_contains\": [\"error\"],\n      \"response_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"error\": {\"type\": \"string\"}\n        },\n        \"required\": [\"error\"]\n      }\n    },\n    \"priority\": \"medium\"\n  },\n  {\n    \"id\": \"TC-003\",\n    \"name\": \"Missing Password\",\n    \"category\": \"validation\",\n    \"description\": \"Verifies login with missing password\",\n    \"input\": {\n      \"headers\": {\n        \"Content-Type\": \"application/json\"\n      },\n      \"params\": {},\n      \"body\": {\n        \"email\": \"user@example.com\"\n      }\n    },\n    \"expected\": {\n      \"status_code\": 422,\n      \"response_contains\": [\"error\"],\n      \"response_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"error\": {\"type\": \"string\"}\n        },\n        \"required\": [\"error\"]\n      }\n    },\n    \"priority\": \"high\"\n  },\n  {\n    \"id\": \"TC-004\",\n    \"name\": \"Invalid Credentials\",\n    \"category\": \"auth\",\n    \"description\": \"Verifies login with invalid credentials\",\n    \"input\": {\n      \"headers\": {\n        \"Content-Type\": \"application/json\"\n      },\n      \"params\": {},\n      \"body\": {\n        \"email\": \"user@example.com\",\n        \"password\": \"wrongpassword\"\n      }\n    },\n    \"expected\": {\n      \"status_code\": 401,\n      \"response_contains\": [\"error\"],\n      \"response_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"error\": {\"type\": \"string\"}\n        },\n        \"required\": [\"error\"]\n      }\n    },\n    \"priority\": \"high\"\n  },\n  {\n    \"id\": \"TC-005\",\n    \"name\": \"Invalid JSON\",\n    \"category\": \"error_handling\",\n    \"description\": \"Verifies login with invalid JSON\",\n    \"input\": {\n      \"headers\": {\n        \"Content-Type\": \"application/json\"\n      },\n      \"params\": {},\n      \"body\": \"invalid json\"\n    },\n    \"expected\": {\n      \"status_code\": 422,\n      \"response_contains\": [\"error\"],\n      \"response_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"error\": {\"type\": \"string\"}\n        },\n        \"required\": [\"error\"]\n      }\n    },\n    \"priority\": \"medium\"\n  }\n]"
+}
