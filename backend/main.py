@@ -27,9 +27,8 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, String, Integer, Text, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-import uuid, os, json, sys
+import uuid, os, json
 
-sys.path.append(os.path.abspath(".."))
 from agents.test_agent import run_website_test
 from agents.test_case_generator import generate_test_cases, generate_test_suite
 
