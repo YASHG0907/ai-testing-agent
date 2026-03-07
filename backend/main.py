@@ -36,16 +36,10 @@ from agents.test_case_generator import generate_test_cases, generate_test_suite
 # ─────────────────────────────────────────────
 #  Database Setup
 # ─────────────────────────────────────────────
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
-if not DATABASE_URL:
-    raise EnvironmentError(
-        "\n\n  DATABASE_URL not set in .env file!\n"
-        "  Add: DATABASE_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres\n"
-    )
-
-engine       = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine       = create_engine(DATABASE_URL) if DATABASE_URL else None
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine) if engine else None
 Base         = declarative_base()
 
 
@@ -77,14 +71,21 @@ class DBTestResult(Base):
 
 
 # Create tables automatically on startup
-Base.metadata.create_all(bind=engine)
-print("✅ Database tables ready")
+@app.on_event("startup")
+async def startup():
+    if engine:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database tables ready")
+    else:
+        print("⚠️ No DATABASE_URL found")
 
 
 # ─────────────────────────────────────────────
 #  DB Dependency
 # ─────────────────────────────────────────────
 def get_db():
+    if not SessionLocal:
+        raise HTTPException(status_code=500, detail="Database not configured")
     db = SessionLocal()
     try:
         yield db
