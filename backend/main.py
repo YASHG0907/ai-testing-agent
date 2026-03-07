@@ -70,13 +70,6 @@ class DBTestResult(Base):
 
 
 # Create tables automatically on startup
-@app.on_event("startup")
-async def startup():
-    if engine:
-        Base.metadata.create_all(bind=engine)
-        print("✅ Database tables ready")
-    else:
-        print("⚠️ No DATABASE_URL found")
 
 
 # ─────────────────────────────────────────────
@@ -108,6 +101,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup():
+    if engine:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database tables ready")
+    else:
+        print("⚠️ No DATABASE_URL found")
 
 # ─────────────────────────────────────────────
 #  Pydantic Models
