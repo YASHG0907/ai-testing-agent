@@ -2,6 +2,9 @@
 import os
 import json
 from groq import Groq
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # ─────────────────────────────────────────────
 #  Configure Groq client

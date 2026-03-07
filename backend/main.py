@@ -1,37 +1,116 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware   # ← ADD THIS LINE
+"""
+main.py
+───────
+AI Testing Agent — Full Stack with PostgreSQL (Supabase)
+FastAPI + Groq + Playwright + SQLAlchemy
+
+Setup:
+    pip install fastapi uvicorn playwright groq sqlalchemy psycopg2-binary python-dotenv alembic
+    playwright install chromium
+
+    Create .env file:
+        GROQ_API_KEY=gsk_your-key-here
+        DATABASE_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres
+
+    Run:
+        uvicorn main:app --reload
+"""
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, HttpUrl
 from typing import Optional, List
 from datetime import datetime
-import uuid, sys, os
+from sqlalchemy import create_engine, Column, String, Integer, Text, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+import uuid, os, json, sys
 
 sys.path.append(os.path.abspath(".."))
 from agents.test_agent import run_website_test
 from agents.test_case_generator import generate_test_cases, generate_test_suite
 
+# ─────────────────────────────────────────────
+#  Database Setup
+# ─────────────────────────────────────────────
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise EnvironmentError(
+        "\n\n  DATABASE_URL not set in .env file!\n"
+        "  Add: DATABASE_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres\n"
+    )
+
+engine       = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base         = declarative_base()
+
+
+# ─────────────────────────────────────────────
+#  Database Models
+# ─────────────────────────────────────────────
+class DBTestCase(Base):
+    __tablename__ = "test_cases"
+
+    id          = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name        = Column(String, nullable=False)
+    url         = Column(String, default="")
+    description = Column(Text, default="")
+    checks      = Column(Text, default="[]")    # JSON string
+    ai_generated = Column(Integer, default=0)   # 0=False, 1=True
+    raw_case    = Column(Text, default="{}")    # JSON string
+    created_at  = Column(DateTime, default=datetime.utcnow)
+
+
+class DBTestResult(Base):
+    __tablename__ = "test_results"
+
+    id          = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    test_id     = Column(String, nullable=False)
+    test_name   = Column(String, nullable=False)
+    status      = Column(String, default="unknown")
+    result_json = Column(Text, default="{}")    # JSON string
+    ran_at      = Column(DateTime, default=datetime.utcnow)
+
+
+# Create tables automatically on startup
+Base.metadata.create_all(bind=engine)
+print("✅ Database tables ready")
+
+
+# ─────────────────────────────────────────────
+#  DB Dependency
+# ─────────────────────────────────────────────
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# ─────────────────────────────────────────────
+#  App Setup
+# ─────────────────────────────────────────────
 app = FastAPI(
     title="AI Testing Agent API",
-    description="Automated website testing + AI test case generation powered by Groq",
-    version="2.0.0"
+    description="Automated website testing + AI test case generation powered by Groq + PostgreSQL",
+    version="3.0.0"
 )
 
-# ← ADD THESE 6 LINES RIGHT HERE
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:5173")],
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# ─────────────────────────────────────────────
-#  In-memory stores  (replace with DB in Step 11)
-# ─────────────────────────────────────────────
-test_cases: dict   = {}
-test_results: dict = {}
-test_history: list = []
 
 
 # ─────────────────────────────────────────────
-#  Pydantic models — Playwright testing
+#  Pydantic Models
 # ─────────────────────────────────────────────
 class Check(BaseModel):
     type: str
@@ -46,10 +125,6 @@ class TestCase(BaseModel):
 class RunRequest(BaseModel):
     test_id: str
 
-
-# ─────────────────────────────────────────────
-#  Pydantic models — AI generation (Groq)
-# ─────────────────────────────────────────────
 class GenerateRequest(BaseModel):
     endpoint_description: str
     method: Optional[str] = "GET"
@@ -76,20 +151,11 @@ class GenerateAndRunRequest(BaseModel):
 @app.get("/", tags=["Health"])
 def home():
     return {
-        "message": "AI Testing Agent v2.0 Running",
+        "message": "AI Testing Agent v3.0 Running",
+        "database": "PostgreSQL (Supabase) ✅",
         "endpoints": {
-            "playwright_testing": [
-                "POST /upload-test",
-                "POST /run-test",
-                "GET  /results/{id}",
-                "GET  /history",
-                "GET  /test-cases"
-            ],
-            "ai_generation": [
-                "POST /generate-tests",
-                "POST /generate-suite",
-                "POST /generate-and-run"
-            ]
+            "playwright_testing": ["POST /upload-test", "POST /run-test", "GET /results/{id}", "GET /history", "GET /test-cases"],
+            "ai_generation":      ["POST /generate-tests", "POST /generate-suite", "POST /generate-and-run"]
         }
     }
 
@@ -98,113 +164,117 @@ def home():
 #  Playwright Testing Routes
 # ─────────────────────────────────────────────
 @app.post("/upload-test", tags=["Playwright Testing"], status_code=201)
-def upload_test(test_case: TestCase):
+def upload_test(test_case: TestCase, db: Session = Depends(get_db)):
     """Register a new Playwright test case. Returns test_id."""
-    test_id = str(uuid.uuid4())
-    test_cases[test_id] = {
-        "test_id":     test_id,
-        "name":        test_case.name,
-        "url":         str(test_case.url),
-        "description": test_case.description,
-        "checks":      [c.dict() for c in test_case.checks],
-        "created_at":  datetime.utcnow().isoformat()
+    db_case = DBTestCase(
+        id          = str(uuid.uuid4()),
+        name        = test_case.name,
+        url         = str(test_case.url),
+        description = test_case.description,
+        checks      = json.dumps([c.dict() for c in test_case.checks]),
+        ai_generated = 0
+    )
+    db.add(db_case)
+    db.commit()
+    db.refresh(db_case)
+    return {
+        "message": "Test case uploaded",
+        "test_id": db_case.id,
+        "test":    _format_test_case(db_case)
     }
-    return {"message": "Test case uploaded", "test_id": test_id, "test": test_cases[test_id]}
 
 
 @app.post("/run-test", tags=["Playwright Testing"])
-def run_test(body: RunRequest):
+def run_test(body: RunRequest, db: Session = Depends(get_db)):
     """Run a registered Playwright test case by test_id."""
-    if body.test_id not in test_cases:
+    db_case = db.query(DBTestCase).filter(DBTestCase.id == body.test_id).first()
+    if not db_case:
         raise HTTPException(status_code=404, detail=f"Test '{body.test_id}' not found")
 
-    test_case = test_cases[body.test_id]
-    raw       = run_website_test(test_case["url"], test_case)
-    result_id = str(uuid.uuid4())
+    test_case_dict = _format_test_case(db_case)
+    raw = run_website_test(db_case.url, test_case_dict)
 
-    entry = {
-        "result_id": result_id,
-        "test_id":   body.test_id,
-        "test_name": test_case["name"],
-        "ran_at":    datetime.utcnow().isoformat(),
-        "result":    raw
+    db_result = DBTestResult(
+        id          = str(uuid.uuid4()),
+        test_id     = body.test_id,
+        test_name   = db_case.name,
+        status      = raw.get("status", "unknown"),
+        result_json = json.dumps(raw)
+    )
+    db.add(db_result)
+    db.commit()
+    db.refresh(db_result)
+
+    return {
+        "message":   "Test executed",
+        "result_id": db_result.id,
+        "summary":   _format_result(db_result),
+        "details":   raw
     }
-    test_results[result_id] = entry
-    test_history.append({
-        "result_id": result_id,
-        "test_id":   body.test_id,
-        "test_name": test_case["name"],
-        "status":    raw.get("status"),
-        "ran_at":    entry["ran_at"]
-    })
-    return {"message": "Test executed", "result_id": result_id, "summary": test_history[-1], "details": raw}
 
 
 @app.get("/results/{result_id}", tags=["Playwright Testing"])
-def get_result(result_id: str):
+def get_result(result_id: str, db: Session = Depends(get_db)):
     """Return full result for a single test run."""
-    if result_id not in test_results:
+    db_result = db.query(DBTestResult).filter(DBTestResult.id == result_id).first()
+    if not db_result:
         raise HTTPException(status_code=404, detail=f"Result '{result_id}' not found")
-    return test_results[result_id]
+    return {**_format_result(db_result), "result": json.loads(db_result.result_json)}
 
 
 @app.get("/history", tags=["Playwright Testing"])
-def get_history(limit: int = 20, status: Optional[str] = None):
-    """Return last N runs. Filter by ?status=success or ?status=error."""
-    history = test_history[::-1]
+def get_history(limit: int = 30, status: Optional[str] = None, db: Session = Depends(get_db)):
+    """Return last N runs from database. Filter by ?status=success or ?status=error."""
+    query = db.query(DBTestResult).order_by(DBTestResult.ran_at.desc())
     if status:
-        history = [h for h in history if h.get("status") == status]
-    return {"total": len(test_history), "showing": min(limit, len(history)), "history": history[:limit]}
+        query = query.filter(DBTestResult.status == status)
+    results = query.limit(limit).all()
+    total   = db.query(DBTestResult).count()
+    return {
+        "total":   total,
+        "showing": len(results),
+        "history": [_format_result(r) for r in results]
+    }
 
 
 @app.get("/test-cases", tags=["Playwright Testing"])
-def list_test_cases():
-    """Return all registered test cases."""
-    return {"total": len(test_cases), "test_cases": list(test_cases.values())}
+def list_test_cases(db: Session = Depends(get_db)):
+    """Return all registered test cases from database."""
+    cases = db.query(DBTestCase).order_by(DBTestCase.created_at.desc()).all()
+    return {"total": len(cases), "test_cases": [_format_test_case(c) for c in cases]}
 
 
 # ─────────────────────────────────────────────
-#  AI Generation Routes (Groq)
+#  AI Generation Routes
 # ─────────────────────────────────────────────
 @app.post("/generate-tests", tags=["AI Generation"])
-def generate_tests_endpoint(body: GenerateRequest):
-    """
-    Use Groq AI to generate structured test cases from plain-English description.
-
-    Example:
-    {
-        "endpoint_description": "POST /login accepts email and password, returns JWT",
-        "method": "POST",
-        "num_cases": 5
-    }
-    """
+def generate_tests_endpoint(body: GenerateRequest, db: Session = Depends(get_db)):
+    """Generate AI test cases and save them to PostgreSQL."""
     result = generate_test_cases(
         endpoint_description=body.endpoint_description,
         method=body.method,
         num_cases=body.num_cases
     )
-
     if "error" in result:
         raise HTTPException(status_code=500, detail=result)
 
-    # Auto-save generated cases into test_cases store
     saved_ids = []
     for tc in result.get("test_cases", []):
-        test_id = str(uuid.uuid4())
-        test_cases[test_id] = {
-            "test_id":      test_id,
-            "name":         tc.get("name", "AI Generated Test"),
-            "url":          "",
-            "description":  tc.get("description", ""),
-            "checks":       [],
-            "ai_generated": True,
-            "raw_case":     tc,
-            "created_at":   datetime.utcnow().isoformat()
-        }
-        saved_ids.append(test_id)
+        db_case = DBTestCase(
+            id           = str(uuid.uuid4()),
+            name         = tc.get("name", "AI Generated Test"),
+            url          = "",
+            description  = tc.get("description", ""),
+            checks       = "[]",
+            ai_generated = 1,
+            raw_case     = json.dumps(tc)
+        )
+        db.add(db_case)
+        saved_ids.append(db_case.id)
 
+    db.commit()
     return {
-        "message":         "Test cases generated and saved",
+        "message":         "Test cases generated and saved to database",
         "total_generated": result["total_cases"],
         "saved_test_ids":  saved_ids,
         "test_cases":      result["test_cases"]
@@ -213,46 +283,20 @@ def generate_tests_endpoint(body: GenerateRequest):
 
 @app.post("/generate-suite", tags=["AI Generation"])
 def generate_suite_endpoint(body: SuiteRequest):
-    """
-    Generate test cases for multiple endpoints at once.
-
-    Example:
-    {
-        "endpoints": [
-            {"method": "POST",   "description": "POST /login with email + password"},
-            {"method": "GET",    "description": "GET /users/{id} returns user profile"},
-            {"method": "DELETE", "description": "DELETE /users/{id} admin-only"}
-        ],
-        "num_cases_each": 3
-    }
-    """
+    """Generate test cases for multiple endpoints."""
     suite = generate_test_suite(
         endpoints=[e.dict() for e in body.endpoints],
         num_cases_each=body.num_cases_each
     )
-
     if "error" in suite:
         raise HTTPException(status_code=500, detail=suite)
-
     return {"message": "Test suite generated", "total_endpoints": suite["total_endpoints"], "suite": suite["suite"]}
 
 
 @app.post("/generate-and-run", tags=["AI Generation"])
-def generate_and_run(body: GenerateAndRunRequest):
-    """
-    The POWER endpoint — does everything in one call:
-      1. Generates AI test cases with Groq
-      2. Runs Playwright on the real URL
-      3. Returns combined pass/fail report
+def generate_and_run(body: GenerateAndRunRequest, db: Session = Depends(get_db)):
+    """Generate AI test cases + run Playwright + save everything to database."""
 
-    Example:
-    {
-        "endpoint_description": "Login page with email and password fields",
-        "method": "POST",
-        "num_cases": 3,
-        "url": "https://example.com/login"
-    }
-    """
     # Step 1 — Generate with Groq AI
     generated = generate_test_cases(
         endpoint_description=body.endpoint_description,
@@ -262,28 +306,73 @@ def generate_and_run(body: GenerateAndRunRequest):
     if "error" in generated:
         raise HTTPException(status_code=500, detail=generated)
 
-    # Step 2 — Run Playwright on real URL
+    # Step 2 — Run Playwright
     playwright_result = run_website_test(str(body.url))
 
-    # Step 3 — Build combined report
-    result_id = str(uuid.uuid4())
-    report = {
-        "result_id":          result_id,
-        "url":                str(body.url),
-        "ran_at":             datetime.utcnow().isoformat(),
-        "ai_generated_cases": generated["test_cases"],
-        "total_cases":        generated["total_cases"],
-        "playwright_result":  playwright_result,
-        "overall_status":     playwright_result.get("status", "unknown")
+    # Step 3 — Save result to database
+    db_result = DBTestResult(
+        id          = str(uuid.uuid4()),
+        test_id     = "ai-generated",
+        test_name   = body.endpoint_description[:80],
+        status      = playwright_result.get("status", "unknown"),
+        result_json = json.dumps({
+            "ai_generated_cases": generated["test_cases"],
+            "playwright_result":  playwright_result,
+            "url":                str(body.url)
+        })
+    )
+    db.add(db_result)
+    db.commit()
+
+    return {
+        "message": "Generated and executed — saved to database ✅",
+        "report": {
+            "result_id":          db_result.id,
+            "url":                str(body.url),
+            "ran_at":             db_result.ran_at.isoformat(),
+            "ai_generated_cases": generated["test_cases"],
+            "total_cases":        generated["total_cases"],
+            "playwright_result":  playwright_result,
+            "overall_status":     playwright_result.get("status", "unknown")
+        }
     }
 
-    test_results[result_id] = report
-    test_history.append({
-        "result_id": result_id,
-        "test_id":   "ai-generated",
-        "test_name": body.endpoint_description[:50],
-        "status":    report["overall_status"],
-        "ran_at":    report["ran_at"]
-    })
 
-    return {"message": "Generated and executed successfully", "report": report}
+# ─────────────────────────────────────────────
+#  Stats endpoint (for dashboard header)
+# ─────────────────────────────────────────────
+@app.get("/stats", tags=["Health"])
+def get_stats(db: Session = Depends(get_db)):
+    """Return overall stats for dashboard."""
+    total  = db.query(DBTestResult).count()
+    passed = db.query(DBTestResult).filter(DBTestResult.status == "success").count()
+    return {
+        "total_runs":    total,
+        "passed":        passed,
+        "failed":        total - passed,
+        "total_cases":   db.query(DBTestCase).count()
+    }
+
+
+# ─────────────────────────────────────────────
+#  Helper formatters
+# ─────────────────────────────────────────────
+def _format_test_case(c: DBTestCase) -> dict:
+    return {
+        "test_id":     c.id,
+        "name":        c.name,
+        "url":         c.url,
+        "description": c.description,
+        "checks":      json.loads(c.checks or "[]"),
+        "ai_generated": bool(c.ai_generated),
+        "created_at":  c.created_at.isoformat() if c.created_at else ""
+    }
+
+def _format_result(r: DBTestResult) -> dict:
+    return {
+        "result_id": r.id,
+        "test_id":   r.test_id,
+        "test_name": r.test_name,
+        "status":    r.status,
+        "ran_at":    r.ran_at.isoformat() if r.ran_at else ""
+    }
