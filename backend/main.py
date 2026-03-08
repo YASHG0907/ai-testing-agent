@@ -249,7 +249,6 @@ def list_test_cases(db: Session = Depends(get_db)):
 # ─────────────────────────────────────────────
 @app.post("/generate-tests", tags=["AI Generation"])
 def generate_tests_endpoint(body: GenerateRequest, db: Session = Depends(get_db)):
-    """Generate AI test cases and save them to PostgreSQL."""
     result = generate_test_cases(
         endpoint_description=body.endpoint_description,
         method=body.method,
@@ -272,14 +271,23 @@ def generate_tests_endpoint(body: GenerateRequest, db: Session = Depends(get_db)
         db.add(db_case)
         saved_ids.append(db_case.id)
 
+    # ← ADD THIS: save to history
+    db_result = DBTestResult(
+        id          = str(uuid.uuid4()),
+        test_id     = "ai-generated",
+        test_name   = body.endpoint_description[:80],
+        status      = "success",
+        result_json = json.dumps(result)
+    )
+    db.add(db_result)
     db.commit()
+
     return {
         "message":         "Test cases generated and saved to database",
         "total_generated": result["total_cases"],
         "saved_test_ids":  saved_ids,
         "test_cases":      result["test_cases"]
     }
-
 
 @app.post("/generate-suite", tags=["AI Generation"])
 def generate_suite_endpoint(body: SuiteRequest):
