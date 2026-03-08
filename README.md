@@ -1,6 +1,6 @@
 # 🤖 AI Testing Agent
 
-An AI-powered full-stack testing system that automatically generates professional test cases from plain English API descriptions using Groq LLM, with real browser automation via Playwright.
+An AI-powered full-stack testing system that automatically generates professional test cases from plain English API descriptions using Groq LLM.
 
 🌐 **Live Demo** → https://ai-testing-agent-yashg0907s-projects.vercel.app  
 🔧 **Live API** → https://ai-testing-agent-production.up.railway.app  
@@ -33,7 +33,6 @@ What takes a QA engineer 2 hours → done in 5 seconds.
 
 - **AI Test Generation** — Groq LLM generates structured test cases from plain English
 - **5 Test Categories** — Happy path, edge cases, validation, auth, error handling
-- **Browser Automation** — Playwright scans real websites automatically
 - **Mission Control Dashboard** — Live React UI with 4 tabs
 - **Persistent History** — All test runs saved to PostgreSQL forever
 - **REST API** — 8 fully documented endpoints
@@ -48,7 +47,6 @@ What takes a QA engineer 2 hours → done in 5 seconds.
 | Frontend | React + Vite |
 | Backend | FastAPI (Python) |
 | AI | Groq API (Llama 3.3 70B) |
-| Automation | Playwright |
 | Database | PostgreSQL (Neon) |
 | Deployment | Railway (backend) + Vercel (frontend) |
 | Version Control | Git + GitHub |
@@ -72,7 +70,7 @@ ai-testing-agent/
 │
 ├── frontend/
 │   └── src/
-│       └── App.jsx                # React dashboard
+│       └── App.jsx                # React mission control dashboard
 │
 ├── .gitignore
 └── README.md
@@ -86,14 +84,13 @@ ai-testing-agent/
 |---|---|---|
 | GET | `/` | Health check |
 | GET | `/stats` | Dashboard statistics |
-| POST | `/upload-test` | Register a Playwright test case |
+| POST | `/upload-test` | Register a test case |
 | POST | `/run-test` | Run a registered test case |
 | GET | `/results/{id}` | Get single test result |
 | GET | `/history` | Get all test history |
 | GET | `/test-cases` | List all test cases |
 | POST | `/generate-tests` | AI generate test cases |
 | POST | `/generate-suite` | AI generate for multiple endpoints |
-| POST | `/generate-and-run` | AI generate + Playwright run |
 
 ---
 
@@ -144,7 +141,7 @@ API Docs  → http://localhost:8000/docs
 
 ## 🎯 How to Use
 
-1. Open the live site
+1. Open the **live site**
 2. Go to **GENERATE tab**
 3. Describe your API endpoint in plain English:
 ```
@@ -164,19 +161,30 @@ Include these details for best results:
 ```
 ✅ HTTP method and endpoint path
 ✅ Required and optional input fields with types
-✅ Success response (status code + what it returns)
+✅ Success response — status code + what it returns
 ✅ All error responses and when they occur
 ✅ Authentication requirements
 ✅ Any constraints (min/max values, allowed formats)
 ```
 
-Example:
+**Example — Login API:**
 ```
-POST /api/register — accepts name (string, required),
-email (string, required, unique), password (string, min 8 chars).
-Returns 201 with user object on success.
-Returns 400 if email already exists.
-Returns 422 if fields are missing or invalid.
+POST /api/login — accepts email (string, required) and
+password (string, required, min 8 chars) in JSON body.
+Returns 200 with JWT access token on success.
+Returns 401 if credentials are wrong.
+Returns 422 if fields are missing or email format is invalid.
+Returns 429 after 5 failed attempts (rate limited).
+```
+
+**Example — Get User:**
+```
+GET /api/users/{id} — returns user profile by ID.
+Requires Bearer token in Authorization header.
+Returns 200 with user object on success.
+Returns 404 if user not found.
+Returns 401 if token is missing or expired.
+Returns 403 if accessing another user without admin role.
 ```
 
 ---
@@ -184,7 +192,7 @@ Returns 422 if fields are missing or invalid.
 ## 🌍 Real World Applications
 
 - **Software Companies** — automate QA test case generation
-- **Startups** — get QA coverage without dedicated QA engineer
+- **Startups** — get QA coverage without a dedicated QA engineer
 - **Freelancers** — deliver professional quality APIs to clients
 - **Students** — learn what good API testing looks like
 - **DevOps Teams** — integrate into CI/CD pipelines
@@ -193,19 +201,19 @@ Returns 422 if fields are missing or invalid.
 
 ## 🔮 Future Scope
 
-- Auto-execute test cases against real APIs
-- GitHub Actions integration for CI/CD
-- Slack/email alerts on test failures
-- Export to Postman/Jest/Pytest format
-- GraphQL and WebSocket support
-- Team collaboration features
-- Performance benchmarking
+- Auto-execute generated test cases against real APIs
+- GitHub Actions integration for automated CI/CD testing
+- Slack and email alerts when tests fail
+- Export test cases to Postman, Jest, and Pytest formats
+- GraphQL and WebSocket API support
+- Team collaboration and shared workspaces
+- Performance and load testing benchmarks
 
 ---
 
 ## 👨‍💻 Author
 
-**Yash G**  
+**Yash Ghadi**  
 GitHub → https://github.com/YASHG0907
 
 ---
